@@ -18,8 +18,8 @@ from collections import deque
 
 DATA_FILE = 'footprint_data.json'
 SCHEM_FILE = 'schematic_data.json'
-GRID_W = 60
-GRID_H = 24
+GRID_W = 80
+GRID_H = 40
 MAP_PADDING = 4  # extra padding around components when mapping
 TICK = 0.08
 
@@ -151,6 +151,8 @@ def run(stdscr):
     pad_map = {}
     for ref,pn,x,y in mapped:
         pad_map[f"{ref}:{pn}"] = (x,y)
+    # reverse mapping: (x,y) -> pad_key
+    coord_to_pad = { (x,y): f"{ref}:{pn}" for ref,pn,x,y in mapped }
 
     with open(SCHEM_FILE,'r',encoding='utf-8') as f:
         schem = json.load(f)
@@ -184,16 +186,16 @@ def run(stdscr):
             # invalid routing: pause indefinitely so user can inspect/kill program
             pause_forever(0, 0, f"Invalid routing detected: start pin for net {net_name} on existing trace. Program paused.")
 
-        # initialize snake on start pad
-        snake = deque()
-        for i in range(3):
-            x0 = (start_x - i) % GRID_W
-            y0 = start_y % GRID_H
-            snake.append((x0,y0))
-        direction = (1,0)
-        trail = set(snake)
-        apple_idx = 1
-        score = 1
+        # helper to (re)initialize snake state for this net
+        def init_snake():
+            s = deque()
+            for i in range(3):
+                x0 = (start_x - i) % GRID_W
+                y0 = start_y % GRID_H
+                s.append((x0,y0))
+            return s, (1,0), set(s), 1, 1
+
+        snake, direction, trail, apple_idx, score = init_snake()
 
         last_time = time.time()
 
@@ -219,9 +221,38 @@ def run(stdscr):
             nx = (nx + GRID_W) % GRID_W
             ny = (ny + GRID_H) % GRID_H
 
+            # collision with existing routed trace
             if (nx,ny) in occupied:
-                # invalid routing during movement: pause indefinitely
-                pause_forever(0, 0, f"Invalid routing detected: net {net_name} collided with existing trace. Program paused.")
+                # offer restart instead of pausing forever
+                try:
+                    stdscr.addstr(GRID_H+1, 0, f"Collision: net {net_name} hit existing trace. Press any key to restart this snake, or 'q' to quit.")
+                except curses.error:
+                    pass
+                stdscr.nodelay(False)
+                k = stdscr.getch()
+                stdscr.nodelay(True)
+                if k == ord('q'):
+                    return
+                # restart snake
+                snake, direction, trail, apple_idx, score = init_snake()
+                last_time = time.time()
+                continue
+
+            # collision with a pad that's not part of the current net
+            hit_pad = coord_to_pad.get((nx, ny))
+            if hit_pad is not None and hit_pad not in apples:
+                try:
+                    stdscr.addstr(GRID_H+1, 0, f"Collision: net {net_name} hit pad {hit_pad} not in this net. Press any key to restart this snake, or 'q' to quit.")
+                except curses.error:
+                    pass
+                stdscr.nodelay(False)
+                k = stdscr.getch()
+                stdscr.nodelay(True)
+                if k == ord('q'):
+                    return
+                snake, direction, trail, apple_idx, score = init_snake()
+                last_time = time.time()
+                continue
 
             snake.appendleft((nx,ny))
             trail.add((nx,ny))
