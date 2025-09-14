@@ -1,0 +1,13 @@
+{
+  "symbols": {
+    "D1": {
+      "lib_id": "[Symbol('lib_id'), 'Device:LED']",
+      "value": "LED"
+    },
+    "U1": {
+      "lib_id": "[Symbol('lib_id'), 'Timer:NA555P']",
+      "value": "NA555P"
+    }
+  },
+  "nets": {}
+}

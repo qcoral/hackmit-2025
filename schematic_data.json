@@ -1,0 +1,22 @@
+{
+  "symbols": {
+    "D1": {
+      "lib_id": "Device:LED",
+      "value": "LED"
+    },
+    "U1": {
+      "lib_id": "Timer:NA555P",
+      "value": "NA555P"
+    }
+  },
+  "nets": {
+    "N$1": [
+      "D1:2",
+      "U1:6"
+    ],
+    "N$2": [
+      "D1:1",
+      "U1:8"
+    ]
+  }
+}
